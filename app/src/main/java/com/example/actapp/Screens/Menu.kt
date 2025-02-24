@@ -43,170 +43,78 @@ import kotlinx.serialization.json.Json
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun PantallaMenu(modifier: Modifier = Modifier, viewModel: MyViewModel, navController: NavController, auth: String?) {
-    // Estado para controlar el drawer
     val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
     val scope = rememberCoroutineScope()
     val isLoading by viewModel.isLoading.observeAsState(false)
-
     val isOpen by viewModel.isOpen.observeAsState(false)
+    val tareas by viewModel.tareas.observeAsState(emptyList()) // 🔥 Observa la lista de tareas en el ViewModel
 
-
-
-
-    if (auth == null){
-        throw Exception("Algo salió mal al parsar del L/R")
-    }
+    if (auth == null) throw Exception("Algo salió mal al parsear del L/R")
     val authResponse = Json.decodeFromString<AuthResponse>(auth)
 
-    viewModel.onIsLoading(true)
+    LaunchedEffect(Unit) {
+        viewModel.cargarTareas(authResponse.token)
+    }
 
-
-
-        Scaffold(
-            topBar = {
-                TopAppBar(
-                    colors = TopAppBarDefaults.topAppBarColors(
-                        containerColor = Color.Black,
-                        titleContentColor = bordeslogo,
-                        actionIconContentColor = Color.Black
-                    ),
-                    title = {
-
-                        Row (
-                            modifier = Modifier.fillMaxWidth(),
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.Center
-                        ){
-
-                            Spacer(modifier = Modifier.weight(1f))
-                            FloatingActionButton(
-                                onClick = {
-                                    Log.i("FloatingButton", "Antes de abrir el diálogo: isOpen = ${viewModel.isOpen.value}")
-                                    viewModel.onIsOpen(true)
-                                    Log.i("FloatingButton", "Después de abrir el diálogo: isOpen = ${viewModel.isOpen.value}")
-                                },
-                                modifier = Modifier
-                                    .padding(16.dp)
-                            ) {
-                                Icon(imageVector = Icons.Default.Add, contentDescription = "Agregar tarea")
-                            }
-
-                            Spacer(modifier = Modifier.weight(1f))
-                            Icon(imageVector = Icons.Filled.AccountCircle, contentDescription = "Usuario" , modifier = modifier.size(48.dp) )
-
-                        }
-                    },
-                    navigationIcon = {
-                        IconButton(onClick = { scope.launch { drawerState.open() } }) {
-                            Icon(imageVector = Icons.Filled.Menu, contentDescription = "Abrir menu" )
-                        }
-                    }
-                )
-            }
-        ) { padding ->
-
-
-
-            if (isOpen) {
-                AddTareaDialog(
-                    isOpen = isOpen,
-                    onDismiss = { viewModel.onIsOpen(false) },
-                    username = authResponse.user.username,
-                    viewModel, authResponse
-                )
-            }
-
-
-
-
-            Box(
-                modifier = modifier
-                    .fillMaxSize()
-                    .background(Color.Black)
-                    .padding(padding)
-            ) {
-                //TODO Acabar tareas
-                var tareas by remember { mutableStateOf<Pair<String?, List<Tarea>?>>(null to null) }
-
-                LoadingOverlay(isLoading)
-
-                LaunchedEffect(Unit) {
-                    scope.launch(Dispatchers.IO) {
-
-                        val resultado = obtenerTareas(authResponse.token).await()
-
-                        tareas = resultado
-                    }
-                }
-
-
-                viewModel.onIsLoading(false)
-
-                if (tareas.second == null && isLoading == false){
-                    Text(tareas.first?:"Tareas dude")
-
-                }else{
-                    LazyColumn(
-                        modifier = Modifier.fillMaxSize(),
-                        contentPadding = PaddingValues(16.dp),
-                        verticalArrangement = Arrangement.spacedBy(12.dp)
+    Scaffold(
+        topBar = {
+            TopAppBar(
+                title = {
+                    Row (
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.Center
                     ) {
-                        tareas.second?.let { listaTareas ->
-                            items(listaTareas.size) { index ->
-                                TareaItem(tarea = listaTareas[index] , onCheckedChange = {
-                                    //TODO PUT CAMBIO DE FALSE A TRUE COMPLETADA
-                                })
-                            }
+                        Spacer(modifier = Modifier.weight(1f))
+                        FloatingActionButton(
+                            onClick = {
+                                viewModel.onIsOpen(true)
+                            },
+                            modifier = Modifier.padding(16.dp)
+                        ) {
+                            Icon(imageVector = Icons.Default.Add, contentDescription = "Agregar tarea")
                         }
+                        Spacer(modifier = Modifier.weight(1f))
+                        Icon(imageVector = Icons.Filled.AccountCircle, contentDescription = "Usuario", modifier = modifier.size(48.dp))
+                    }
+                },
+            )
+        }
+    ) { padding ->
+        if (isOpen) {
+            AddTareaDialog(
+                isOpen = isOpen,
+                onDismiss = { viewModel.onIsOpen(false) },
+                username = authResponse.user.username,
+                viewModel, authResponse
+            )
+        }
+
+        Box(
+            modifier = modifier
+                .fillMaxSize()
+                .background(Color.Black)
+                .padding(padding)
+        ) {
+            LoadingOverlay(isLoading)
+
+            if (tareas.isEmpty() && !isLoading) {
+                Text("No hay tareas disponibles", color = Color.White)
+            } else {
+                LazyColumn(
+                    modifier = Modifier.fillMaxSize(),
+                    contentPadding = PaddingValues(16.dp),
+                    verticalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    items(tareas.size) { index ->
+                        TareaItem(tarea = tareas[index], onCheckedChange = { /* TODO: PUT actualizar estado */ })
                     }
                 }
             }
         }
     }
-
-
-
-@Composable
-fun DrawerContent(modifier: Modifier, navController: NavController, onClose: () -> Unit, username: String) {
-    Column(
-        modifier = modifier
-            .fillMaxHeight()
-            .padding(16.dp)
-    ) {
-        Text(
-            text = "Menú",
-            fontSize = 24.sp,
-            modifier = Modifier.padding(bottom = 16.dp),
-            color = azullogo
-        )
-
-        Spacer(Modifier.padding(vertical = 20.dp))
-
-        DrawerMenuItem(
-            text = username,
-            icon = Icons.Filled.Person,
-            onClick = {
-                //TODO
-            }
-        )
-
-
-        Spacer(modifier = Modifier.weight(1f))
-
-        HorizontalDivider(
-            color = Color.White,
-            modifier = Modifier.padding(vertical = 16.dp)
-        )
-
-        DrawerMenuItem(
-            text = "Ajustes",
-            icon = Icons.Filled.Settings,
-            onClick = {
-                //No funcional
-            }
-        )
-    }
 }
+
 
 @Composable
 fun DrawerMenuItem(text: String, icon: ImageVector, onClick: () -> Unit) {
@@ -243,7 +151,6 @@ fun obtenerTareas(
     return scope.async(Dispatchers.IO) {
         try {
             val response = API.retrofitService.getTareas(authHeader = "Bearer $token")
-            Log.i("RESPUESTA TAREAAAAS",response.body().toString())
 
             if (response.isSuccessful) {
                 Log.i("OBTENER TAREAAAAAAA",response.toString())
@@ -268,7 +175,8 @@ fun insertarTareas(
     return scope.async(Dispatchers.IO) {
         try {
             val response = API.retrofitService.postTareas(authHeader = "Bearer $token", tareaInsertDTO = tareaInsertDTO)
-            Log.i("RESPUESTA TAREAAAAS",response.body().toString())
+
+            Log.i("RESPUESTA TAREAAAAS",response.toString())
 
             if (response.isSuccessful) {
 

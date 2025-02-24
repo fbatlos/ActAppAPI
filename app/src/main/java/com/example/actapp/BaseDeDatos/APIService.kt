@@ -11,6 +11,8 @@ import retrofit2.http.Body
 import retrofit2.http.GET
 import retrofit2.http.Header
 import retrofit2.http.POST
+import retrofit2.http.PUT
+import retrofit2.http.Path
 
 
 interface APIService {
@@ -28,4 +30,6 @@ interface APIService {
     @POST("tareas/tarea")
     suspend fun postTareas(@Header("Authorization") authHeader: String, @Body tareaInsertDTO: TareaInsertDTO): Response<Tarea>
 
+    @PUT("tareas/tarea/{id}")
+    suspend fun putTareas(@Header("Authorization") authHeader: String,@Path("id") id:String ,@Body tarea: Tarea): Response<Tarea>
 }

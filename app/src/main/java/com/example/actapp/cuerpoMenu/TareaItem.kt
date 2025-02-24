@@ -131,69 +131,36 @@ fun formatDate(date: Date): String {
 fun AddTareaDialog(
     isOpen: Boolean,
     onDismiss: () -> Unit,
-    username:String,
-
+    username: String,
     viewModel: MyViewModel,
     authResponse: AuthResponse
 ) {
     var titulo by remember { mutableStateOf("") }
-    var cuerpo by remember { mutableStateOf("") }
-    val scope = rememberCoroutineScope()
+    var descripcion by remember { mutableStateOf("") }
 
     if (isOpen) {
-
-
-            viewModel.onIsLoading(false)  // ✅ Ahora se ejecuta en el hilo principal
-
-
-
         AlertDialog(
-            onDismissRequest = onDismiss,
-            title = {
-                Text(text = "Agregar Tarea")
-            },
+            onDismissRequest = { onDismiss() },
+            title = { Text("Agregar Nueva Tarea") },
             text = {
                 Column {
-
                     TextField(
                         value = titulo,
                         onValueChange = { titulo = it },
                         label = { Text("Título") }
                     )
-                    Spacer(modifier = Modifier.height(8.dp))
                     TextField(
-                        value = cuerpo,
-                        onValueChange = { cuerpo = it },
-                        label = { Text("Cuerpo de la tarea") }
+                        value = descripcion,
+                        onValueChange = { descripcion = it },
+                        label = { Text("Descripción") }
                     )
                 }
             },
             confirmButton = {
                 Button(
                     onClick = {
-                        val newTarea = TareaInsertDTO(
-                            titulo = titulo,
-                            cuerpo = cuerpo,
-                            username = username,
-                        )
-
-                            scope.launch(Dispatchers.IO) {
-                                if (newTarea != null) {
-                                    viewModel.onIsLoading(true)
-
-                                    Log.i("ESTOY EN EL INSERT", newTarea.toString())
-
-                                    val resultado =
-                                        insertarTareas(authResponse.token, newTarea).await()
-                                    viewModel.onIsLoading(false)
-                                    if (resultado.first == null) {
-
-                                    } else {
-
-                                    }
-                                }
-                            }
-
+                        val nuevaTarea = TareaInsertDTO(titulo, descripcion, username)
+                        viewModel.agregarTarea(authResponse.token, nuevaTarea)
                         onDismiss()
                     }
                 ) {
@@ -201,7 +168,7 @@ fun AddTareaDialog(
                 }
             },
             dismissButton = {
-                Button(onClick = onDismiss) {
+                Button(onClick = { onDismiss() }) {
                     Text("Cancelar")
                 }
             }
